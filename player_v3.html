@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>BC DERBY — PLAYER v3</title>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+const fc={apiKey:"AIzaSyB_cqkmI6Uoly5T-8PqENzPlaMkc62Z05M",authDomain:"bc-derby.firebaseapp.com",databaseURL:"https://bc-derby-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"bc-derby",storageBucket:"bc-derby.firebasestorage.app",messagingSenderId:"498397503926",appId:"1:498397503926:web:0c3163d1d543f8fe0d6117"};
+const db=getDatabase(initializeApp(fc));
+window._fb={db,ref,set,get,onValue,off};
+window._fbReady=true;
+document.dispatchEvent(new Event('firebase-ready'));
+</script>
+<style>
+:root{--gold:#f5c842;--gold2:#c9973a;--glow:rgba(245,200,66,0.3);--green:#1a8a1a;--ok:#33dd66;--dark:#060f06;--border:#7a5e18;--cream:#f5ead6;--cream2:#e0cfa0;--muted:#6a8a6a;--pb2:#2a4a8a;--pg:#7ab8ff;--bbonus:#7a3a8a;--pbonus:#c878e8;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:var(--dark);color:var(--cream);font-family:'Hiragino Kaku Gothic ProN','Meiryo','Yu Gothic',sans-serif;}
+#loading{position:fixed;inset:0;background:var(--dark);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .4s;}
+#loading.hidden{opacity:0;pointer-events:none;}
+.ld-title{font-family:Georgia,serif;font-style:italic;font-size:40px;color:var(--gold);animation:glow 1.2s ease-in-out infinite alternate;}
+.ld-spin{width:40px;height:40px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--gold);animation:spin .7s linear infinite;}
+.ld-msg{font-family:'Courier New',monospace;font-size:11px;letter-spacing:3px;color:var(--gold2);}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes glow{from{text-shadow:0 0 16px var(--glow)}to{text-shadow:0 0 40px rgba(245,200,66,.7)}}
+#screen-login{display:none;min-height:100vh;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+#screen-login.on{display:flex;}
+.login-card{width:100%;max-width:400px;background:linear-gradient(135deg,#0a2a0a,#060f06);border:2px solid var(--border);border-radius:16px;padding:28px 24px;text-align:center;}
+.login-logo{font-family:Georgia,serif;font-style:italic;font-size:36px;color:var(--gold);letter-spacing:4px;}
+.login-sub{font-family:'Courier New',monospace;font-size:10px;letter-spacing:4px;color:var(--gold2);margin-top:4px;margin-bottom:24px;}
+.login-line{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:24px;}
+.lbl{font-family:'Trebuchet MS',sans-serif;font-size:11px;letter-spacing:2px;color:var(--muted);text-align:left;margin-bottom:4px;}
+.lbl small{display:block;font-size:9px;opacity:.7;}
+.login-sel{width:100%;background:rgba(0,0,0,.6);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-size:15px;padding:12px 14px;outline:none;margin-bottom:14px;appearance:none;}
+.login-sel:focus{border-color:var(--gold);}
+.login-inp{width:100%;background:rgba(0,0,0,.6);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-size:18px;padding:12px 14px;outline:none;text-align:center;letter-spacing:6px;font-family:'Courier New',monospace;margin-bottom:20px;}
+.login-inp:focus{border-color:var(--gold);}
+.login-btn{width:100%;background:linear-gradient(135deg,var(--gold2),var(--gold));color:#000;font-family:'Trebuchet MS',sans-serif;font-weight:700;font-size:16px;padding:14px;border:none;border-radius:8px;cursor:pointer;touch-action:manipulation;}
+.login-err{color:#ff5555;font-size:12px;font-family:'Courier New',monospace;margin-top:10px;min-height:16px;}
+#screen-main{display:none;flex-direction:column;min-height:100vh;}
+#screen-main.on{display:flex;}
+.hdr{background:linear-gradient(180deg,#0d200d,#060f06);border-bottom:2px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:8px;}
+.hdr-logo{font-family:Georgia,serif;font-style:italic;font-size:18px;color:var(--gold);letter-spacing:3px;flex-shrink:0;}
+.hdr-team{font-family:'Trebuchet MS',sans-serif;font-size:13px;font-weight:700;color:var(--gold);background:rgba(245,200,66,.1);border:1px solid var(--border);border-radius:5px;padding:3px 10px;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;}
+.logout-btn{flex-shrink:0;font-family:'Trebuchet MS',sans-serif;font-size:11px;padding:8px 14px;background:rgba(200,0,0,.2);border:1px solid #883333;border-radius:6px;color:#ff8888;cursor:pointer;touch-action:manipulation;min-width:80px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;}
+.logout-btn:active{background:rgba(200,0,0,.4);}
+/* #1修正: 所持ポイントバナー — S.pointsではなく表示用計算値を使う */
+.pts-banner{background:linear-gradient(135deg,rgba(0,0,0,.5),rgba(10,40,10,.7));border-bottom:2px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:12px;}
+.pts-label{font-family:'Trebuchet MS',sans-serif;font-size:10px;color:var(--muted);}
+.pts-label small{font-size:8px;opacity:.7;display:block;}
+.pts-value{font-family:'Courier New',monospace;font-size:34px;font-weight:700;color:var(--ok);line-height:1;}
+.pts-sub{font-family:'Courier New',monospace;font-size:10px;color:var(--muted);margin-top:2px;}
+.topic-tabs{display:flex;overflow-x:auto;background:#050e05;border-bottom:2px solid var(--border);padding:0 6px;gap:1px;-webkit-overflow-scrolling:touch;}
+.topic-tabs::-webkit-scrollbar{height:2px;}
+.topic-tab{font-family:'Trebuchet MS',sans-serif;font-size:11px;padding:8px 11px;border:none;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;position:relative;top:2px;flex-shrink:0;touch-action:manipulation;}
+.topic-tab.on{color:var(--gold);border-bottom-color:var(--gold);background:rgba(245,200,66,.06);}
+.topic-tab.ptab.on{color:var(--pg);border-bottom-color:var(--pg);}
+.ttab-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:middle;}
+.tab-en{display:block;font-size:8px;opacity:.6;margin-top:1px;}
+.content{flex:1;padding:14px 14px 80px;}
+.mpanel{display:none;}.mpanel.on{display:block;}
+.game-card{border-radius:12px;overflow:hidden;margin-bottom:12px;}
+.game-card.real{background:linear-gradient(135deg,rgba(10,40,10,.95),rgba(6,15,6,.97));border:2px solid var(--border);}
+.game-card.real::before{content:'';display:block;height:3px;background:linear-gradient(90deg,transparent,var(--gold),var(--gold2),transparent);}
+.game-card.bonus{background:linear-gradient(135deg,rgba(60,10,60,.95),rgba(20,6,20,.97));border:2px solid var(--bbonus);}
+.game-card.bonus::before{content:'';display:block;height:3px;background:linear-gradient(90deg,transparent,var(--pbonus),var(--bbonus),transparent);}
+.game-card.prac{background:linear-gradient(135deg,rgba(10,20,50,.95),rgba(6,10,30,.97));border:2px solid var(--pb2);}
+.game-card.prac::before{content:'';display:block;height:3px;background:linear-gradient(90deg,transparent,var(--pg),#4a7abf,transparent);}
+.game-head{padding:12px 16px;background:rgba(0,0,0,.3);border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.game-num{font-family:'Courier New',monospace;font-size:10px;letter-spacing:3px;color:var(--gold2);}
+.game-num.pnum{color:var(--pg);}.game-num.bnum{color:var(--pbonus);}
+.game-name{font-family:'Trebuchet MS',sans-serif;font-size:16px;font-weight:700;flex:1;}
+.game-name small{display:block;font-size:10px;font-weight:400;opacity:.6;}
+.gst{font-family:'Trebuchet MS',sans-serif;font-size:10px;padding:3px 9px;border-radius:4px;border:1px solid;white-space:nowrap;}
+.st-open{background:rgba(0,180,0,.15);border-color:#0a7a0a;color:#44dd44;}
+.st-closed{background:rgba(200,0,0,.15);border-color:#880808;color:#ff5555;}
+.st-decided{background:rgba(245,200,66,.15);border-color:var(--border);color:var(--gold);}
+.st-practice{background:rgba(42,74,138,.2);border-color:var(--pb2);color:var(--pg);}
+.st-bonus{background:rgba(120,40,140,.2);border-color:var(--bbonus);color:var(--pbonus);}
+.pbanner{background:rgba(42,74,138,.15);border:1px solid var(--pb2);border-radius:8px;padding:10px 14px;margin:10px;text-align:center;}
+.pbanner-title{font-family:'Trebuchet MS',sans-serif;font-size:13px;font-weight:700;color:var(--pg);}
+.pbanner-title small{display:block;font-size:10px;font-weight:400;opacity:.7;}
+.pbanner-sub{font-family:'Courier New',monospace;font-size:10px;color:var(--muted);margin-top:4px;}
+.rule-note{padding:8px 16px;font-family:'Trebuchet MS',sans-serif;font-size:11px;color:var(--gold2);text-align:center;background:rgba(245,200,66,.06);border-bottom:1px solid rgba(255,255,255,.06);}
+.rule-note small{display:block;font-size:9px;color:var(--muted);margin-top:1px;}
+.rule-note.pnote{color:var(--pg);background:rgba(42,74,138,.1);}
+.rule-note.bnote{color:var(--pbonus);background:rgba(120,40,140,.08);}
+.psel-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;}
+.psel-btn{background:rgba(0,0,0,.4);border:2px solid var(--border);border-radius:10px;padding:14px 10px;text-align:center;cursor:pointer;touch-action:manipulation;}
+.psel-btn:active{border-color:var(--gold);background:rgba(245,200,66,.08);}
+.psb-name{font-family:'Trebuchet MS',sans-serif;font-size:14px;font-weight:700;}
+.psb-name small{display:block;font-size:9px;font-weight:400;opacity:.6;}
+.psb-odds{font-family:'Courier New',monospace;font-size:18px;color:var(--gold);font-weight:700;margin-top:4px;}
+.psb-tot{font-family:'Courier New',monospace;font-size:10px;color:var(--muted);margin-top:2px;}
+.bonus-grid{display:flex;flex-direction:column;gap:8px;padding:12px;}
+.bonus-btn{background:rgba(0,0,0,.4);border:2px solid var(--bbonus);border-radius:12px;padding:16px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;gap:14px;}
+.bonus-btn:active{background:rgba(120,40,140,.15);}
+.bonus-icon{font-size:28px;flex-shrink:0;}
+.bonus-info{flex:1;}
+.bonus-label{font-family:'Trebuchet MS',sans-serif;font-size:15px;font-weight:700;color:var(--cream);}
+.bonus-odds{font-family:'Courier New',monospace;font-size:18px;color:var(--pbonus);font-weight:700;margin-top:2px;}
+.bonus-tot{font-family:'Courier New',monospace;font-size:10px;color:var(--muted);margin-top:1px;}
+.pgrid{display:flex;flex-direction:column;gap:8px;padding:12px;}
+.prow{background:rgba(0,0,0,.35);border:2px solid var(--border);border-radius:10px;padding:14px;}
+.prow.prow-p{border-color:var(--pb2);}
+.pl-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.pl-name{font-family:'Trebuchet MS',sans-serif;font-size:16px;font-weight:700;flex:1;}
+.pl-name small{display:block;font-size:9px;font-weight:400;opacity:.6;}
+.pl-odds{font-family:'Courier New',monospace;font-size:16px;color:var(--gold);font-weight:700;}
+.pl-tot{font-family:'Courier New',monospace;font-size:10px;color:var(--muted);}
+.max-hint{font-family:'Courier New',monospace;font-size:11px;color:var(--muted);margin-bottom:8px;}
+.bet-inp{width:100%;background:rgba(0,0,0,.6);border:2px solid var(--border);border-radius:8px;color:var(--cream);font-family:'Courier New',monospace;font-size:26px;padding:12px;text-align:center;outline:none;transition:border-color .2s;margin-bottom:10px;}
+.bet-inp:focus{border-color:var(--gold);background:rgba(245,200,66,.08);}
+.bet-inp.has-val{border-color:var(--gold2);background:rgba(245,200,66,.1);color:var(--gold);font-weight:700;}
+.bet-inp.pi:focus{border-color:var(--pg);}
+.bet-inp.pi.has-val{border-color:var(--pb2);background:rgba(122,184,255,.1);color:var(--pg);}
+.qbtns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+.qbtn{font-family:'Trebuchet MS',sans-serif;font-size:13px;padding:9px 12px;background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:6px;color:var(--cream2);cursor:pointer;flex:1;touch-action:manipulation;}
+.qbtn:active{background:rgba(245,200,66,.15);border-color:var(--gold);color:var(--gold);}
+.qbtn.clr{border-color:#883333;color:#ff6666;}
+.qbtn.all{border-color:var(--ok);color:var(--ok);}
+.pred{font-family:'Courier New',monospace;font-size:13px;color:var(--ok);margin-bottom:10px;min-height:18px;text-align:center;}
+.pred.pp{color:var(--pg);}
+.cfm-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--gold2),var(--gold));color:#000;font-family:'Trebuchet MS',sans-serif;font-weight:700;font-size:15px;border:none;border-radius:8px;cursor:pointer;box-shadow:0 3px 14px var(--glow);margin-bottom:8px;touch-action:manipulation;}
+.cfm-btn.pb{background:linear-gradient(135deg,var(--pb2),var(--pg));}
+.cfm-btn:active{opacity:.85;}
+.cfm-btn:disabled{opacity:.35;cursor:not-allowed;}
+.chg-btn{width:100%;padding:10px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:'Trebuchet MS',sans-serif;font-size:11px;cursor:pointer;touch-action:manipulation;}
+.chg-btn:active{border-color:var(--gold);color:var(--gold);}
+.cfm-box{background:rgba(0,180,60,.1);border:2px solid #0a7a0a;border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.cfm-box.pcfm{background:rgba(42,74,138,.2);border-color:var(--pb2);}
+.cfm-amt{font-family:'Courier New',monospace;font-size:28px;color:var(--ok);font-weight:700;}
+.cfm-amt.pa{color:var(--pg);}
+.cfm-lbl{font-family:'Trebuchet MS',sans-serif;font-size:10px;color:#44dd88;}
+.cfm-lbl small{display:block;font-size:8px;opacity:.7;}
+.cfm-pred{font-family:'Courier New',monospace;font-size:12px;color:var(--ok);margin-top:3px;}
+.edit-btn{font-family:'Trebuchet MS',sans-serif;font-size:12px;padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--cream2);cursor:pointer;white-space:nowrap;flex-shrink:0;touch-action:manipulation;}
+.edit-btn:active{border-color:var(--gold);color:var(--gold);}
+.closed-banner{background:rgba(200,0,0,.12);border:1px solid #883333;border-radius:8px;padding:14px;text-align:center;color:#ff6666;font-family:'Trebuchet MS',sans-serif;font-size:13px;margin:8px;}
+.dec-banner{background:rgba(245,200,66,.1);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;color:var(--gold);font-family:'Trebuchet MS',sans-serif;font-size:13px;margin:8px;}
+.rank-mini{padding:8px 0 14px;}
+.rank-title{font-family:'Trebuchet MS',sans-serif;font-size:11px;letter-spacing:3px;color:var(--gold2);margin-bottom:8px;}
+.rlist{display:flex;flex-direction:column;gap:4px;}
+.rrow{display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(0,0,0,.3);border-radius:6px;border:1px solid rgba(120,90,20,.2);}
+.rrow.me{border-color:var(--gold);background:rgba(245,200,66,.07);}
+.rnum{font-family:Georgia,serif;font-style:italic;font-size:16px;min-width:26px;text-align:center;color:var(--muted);}
+.rnum.top{color:var(--gold);}
+.rname{font-family:'Trebuchet MS',sans-serif;font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rpts{font-family:'Courier New',monospace;font-size:13px;color:var(--gold);}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#050e05;border-top:2px solid var(--border);display:flex;z-index:100;}
+.bnav-btn{flex:1;padding:10px 4px;border:none;background:transparent;color:var(--muted);font-family:'Trebuchet MS',sans-serif;font-size:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;touch-action:manipulation;}
+.bnav-btn .icon{font-size:20px;}
+.bnav-btn.on{color:var(--gold);}
+#logout-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:8000;align-items:center;justify-content:center;}
+#logout-modal.on{display:flex;}
+.modal-box{background:linear-gradient(135deg,#1a0505,#0a0a0a);border:2px solid #883333;border-radius:14px;padding:28px 24px;max-width:300px;width:88%;text-align:center;}
+.modal-title{font-family:Georgia,serif;font-size:18px;color:#ff8888;margin-bottom:10px;}
+.modal-body{font-family:'Trebuchet MS',sans-serif;font-size:13px;color:var(--cream2);line-height:1.7;margin-bottom:20px;}
+.modal-btns{display:flex;gap:10px;}
+.modal-btn-yes{flex:1;padding:13px;background:linear-gradient(135deg,#700,#cc1f1f);color:#fff;font-family:'Trebuchet MS',sans-serif;font-size:14px;border:none;border-radius:8px;cursor:pointer;touch-action:manipulation;}
+.modal-btn-no{flex:1;padding:13px;background:transparent;border:1px solid var(--border);color:var(--cream2);font-family:'Trebuchet MS',sans-serif;font-size:14px;border-radius:8px;cursor:pointer;touch-action:manipulation;}
+#toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(8,28,8,.97);border:2px solid var(--gold);color:var(--gold);padding:9px 18px;border-radius:7px;font-family:'Trebuchet MS',sans-serif;font-size:13px;opacity:0;transition:all .3s;z-index:9500;white-space:nowrap;pointer-events:none;}
+#toast.on{transform:translateX(-50%) translateY(0);opacity:1;}
+</style>
+</head>
+<body>
+<div id="loading"><div class="ld-title">BC DERBY</div><div class="ld-spin"></div><div class="ld-msg" id="ld-msg">接続中...</div></div>
+<div id="screen-login">
+  <div class="login-card">
+    <div class="login-logo">♠ BC DERBY</div><div class="login-sub">PLAYER LOGIN</div><div class="login-line"></div>
+    <div class="lbl">チームを選択 <small>Select your team</small></div>
+    <select class="login-sel" id="login-team-sel"><option value="">-- チームを選んでください --</option></select>
+    <div class="lbl">PINコード（4桁）<small>4-digit PIN code</small></div>
+    <input class="login-inp" id="login-pin" type="tel" maxlength="4" placeholder="0000" inputmode="numeric"/>
+    <button class="login-btn" id="btn-login">参加する →</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+<div id="screen-main">
+  <div class="hdr">
+    <div class="hdr-logo">♠ BC DERBY</div>
+    <div class="hdr-team" id="hdr-team">—</div>
+    <button class="logout-btn" id="btn-logout">ログアウト</button>
+  </div>
+  <div class="pts-banner">
+    <div>
+      <div class="pts-label">所持ポイント <small>Your Points</small></div>
+      <div class="pts-value" id="pts-value">— pt</div>
+      <div class="pts-sub" id="pts-sub"></div>
+    </div>
+  </div>
+  <div class="topic-tabs" id="topic-tabs"></div>
+  <div class="content">
+    <div class="mpanel on" id="mpanel-bet"><div id="bet-content"></div></div>
+    <div class="mpanel" id="mpanel-ranking"><div class="rank-mini"><div class="rank-title">🏆 RANKING</div><div class="rlist" id="rank-list"></div></div></div>
+  </div>
+  <div class="bottom-nav">
+    <button class="bnav-btn on" id="bnav-bet"><span class="icon">🎲</span>BET</button>
+    <button class="bnav-btn" id="bnav-ranking"><span class="icon">🏆</span>RANKING</button>
+  </div>
+</div>
+<div id="logout-modal">
+  <div class="modal-box">
+    <div class="modal-title">ログアウト</div>
+    <div class="modal-body">チーム選択画面に戻ります。<br>よろしいですか？</div>
+    <div class="modal-btns">
+      <button class="modal-btn-yes" id="btn-logout-ok">ログアウト</button>
+      <button class="modal-btn-no" id="btn-logout-cancel">キャンセル</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+// ===== STEP1: 定数 =====
+var INIT_PTS=400, PRAC_MAX=400, N_TEAMS=33, N_TOPICS=5, N_PLAYERS=5;
+var BONUS_IDX=4;
+var BONUS_OPTS=['A チームの勝ち','B チームの勝ち','引き分け'];
+var BONUS_COLORS=['#d42020','#1a4aaa','#6a8a6a'];
+var BONUS_ICONS=['🔴','🔵','🤝'];
+var DB_PATH='bc_derby', PRAC_IDX=0;
+var TEAM_PINS=['3847','1592','7264','4831','9053','2716','6384','5029','8473','1265','4958','7301','2684','9147','3520','6193','8045','1738','5962','4307','7824','3091','6450','2873','9516','1347','5280','8634','4019','7562','2905','6741','3158'];
+
+// ===== STEP2: DEF =====
+var DEF_TEAMS=[],DEF_TOPICS=[],DEF_PLAYERS=[];
+(function(){
+  var i,j,r;
+  for(i=0;i<N_TEAMS;i++) DEF_TEAMS.push('チーム'+(i+1));
+  for(i=0;i<N_TOPICS;i++) DEF_TOPICS.push(i===BONUS_IDX?'ボーナスゲーム':'お題 '+(i+1));
+  for(i=0;i<N_TOPICS;i++){
+    r=[];
+    if(i===BONUS_IDX){for(j=0;j<BONUS_OPTS.length;j++)r.push(BONUS_OPTS[j]);}
+    else{for(j=0;j<N_PLAYERS;j++)r.push('出場者'+String.fromCharCode(65+j));}
+    DEF_PLAYERS.push(r);
+  }
+})();
+
+// ===== STEP3: 状態 =====
+var S=null, myTeam=null, curTab=0;
+// confirmedPi[tabIdx] = 確定した出場者番号（null=未確定）
+var confirmedPi={};
+// localVal[tabIdx][pi] = 入力中の値（未確定保護用）
+// ★ S.bets には一切書き込まない。確定時のみsaveMyBetsで保存
+var localVal={};
+var selPracPi=-1, selRealPi={};
+var db,fbRef,fbSet,fbGet,fbOnValue,fbOff,fbReady=false;
+// #7修正: リスナー解除用の参照を保持
+var fbMetaRef=null, fbBetsRef=null;
+
+// ===== STEP4: repairState =====
+function repairState(s){
+  if(!s)s={};
+  if(!s.practice_bets)s.practice_bets={};
+  for(var tm=0;tm<N_TEAMS;tm++)if(!s.practice_bets[tm])s.practice_bets[tm]={};
+  if(!s.practice_topic)s.practice_topic='練習ゲーム';
+  if(!Array.isArray(s.practice_players)||s.practice_players.length<N_PLAYERS)
+    s.practice_players=['出場者A','出場者B','出場者C','出場者D','出場者E'];
+  if(!s.bets)s.bets={};
+  for(var t=0;t<N_TOPICS;t++){
+    if(!s.bets[t])s.bets[t]={};
+    for(var tm=0;tm<N_TEAMS;tm++)if(!s.bets[t][tm])s.bets[t][tm]={};
+  }
+  if(!Array.isArray(s.players)||s.players.length<N_TOPICS)
+    s.players=DEF_PLAYERS.map(function(a){return a.slice();});
+  for(var t=0;t<N_TOPICS;t++){
+    if(!Array.isArray(s.players[t]))s.players[t]=DEF_PLAYERS[t].slice();
+    var elen=(t===BONUS_IDX)?BONUS_OPTS.length:N_PLAYERS;
+    while(s.players[t].length<elen)
+      s.players[t].push(DEF_PLAYERS[t][s.players[t].length]||'選択肢'+(s.players[t].length+1));
+  }
+  if(!Array.isArray(s.status)||s.status.length<N_TOPICS)s.status=[];
+  if(!Array.isArray(s.winners)||s.winners.length<N_TOPICS)s.winners=[];
+  if(!Array.isArray(s.topics)||s.topics.length<N_TOPICS)s.topics=DEF_TOPICS.slice();
+  if(!Array.isArray(s.teams))s.teams=DEF_TEAMS.slice();
+  if(!Array.isArray(s.points))s.points=[];
+  for(var t=0;t<N_TOPICS;t++){
+    if(!s.status[t])s.status[t]='open';
+    if(s.winners[t]===undefined)s.winners[t]=null;
+  }
+  while(s.teams.length<N_TEAMS)s.teams.push('チーム'+(s.teams.length+1));
+  while(s.points.length<N_TEAMS)s.points.push(INIT_PTS);
+  return s;
+}
+
+// ===== STEP5: Calc =====
+function topicTotal(ti){var n=0;for(var tm=0;tm<N_TEAMS;tm++){var b=S.bets[ti][tm];for(var k in b)n+=(b[k]||0);}return n;}
+function playerTotal(ti,pi){var n=0;for(var tm=0;tm<N_TEAMS;tm++)n+=(S.bets[ti][tm][pi]||0);return n;}
+function ttTotal(ti,tm){var n=0,b=S.bets[ti][tm];for(var k in b)n+=(b[k]||0);return n;}
+function getOdds(ti,pi){var tot=topicTotal(ti),p=playerTotal(ti,pi);return(tot&&p)?tot/p:null;}
+
+// 所持ポイント = S.points（ホストの確定処理で更新される）
+function myMax(){
+  if(!S||myTeam===null)return INIT_PTS;
+  var v=S.points[myTeam];
+  return(typeof v==='number'&&!isNaN(v))?v:INIT_PTS;
+}
+
+// ★ BET上限 = 所持ポイント全額（他ゲームBETは一切引かない）
+// 他ゲームのS.betsを参照すると「残存データ」で誤計算が発生するため
+// myMax()のみを使う。引数ti,piは互換性のために残す（使わない）
+function calcMaxBet(ti,pi){
+  return Math.max(0, myMax());
+}
+
+// BET済み合計（表示専用）
+function myConfirmedBetTotal(){
+  var n=0;
+  for(var t=0;t<N_TOPICS;t++){
+    if(S.status[t]==='decided')continue;
+    n+=ttTotal(t,myTeam);
+  }
+  return n;
+}
+
+// 練習calc
+function pracGrand(){var n=0;for(var tm=0;tm<N_TEAMS;tm++){var b=S.practice_bets[tm];for(var k in b)n+=(b[k]||0);}return n;}
+function pracPlayerTotal(pi){var n=0;for(var tm=0;tm<N_TEAMS;tm++)n+=(S.practice_bets[tm][pi]||0);return n;}
+function getPracOdds(pi){var tot=pracGrand(),p=pracPlayerTotal(pi);return(tot&&p)?tot/p:null;}
+function myPracUsed(){var b=S.practice_bets[myTeam];var n=0;for(var k in b)n+=(b[k]||0);return n;}
+function calcPracMaxBet(pi){return Math.max(0,PRAC_MAX-(myPracUsed()-(S.practice_bets[myTeam][pi]||0)));}
+
+// ===== STEP6: Firebase =====
+// saveMyBets: 確定済みのS.betsのみ保存（localValは保存しない）
+function saveMyBets(){
+  if(!fbReady||myTeam===null)return;
+  var payload={ts:Date.now()};
+  for(var t=0;t<N_TOPICS;t++)payload['t'+t]=S.bets[t][myTeam]||{};
+  payload['prac']=S.practice_bets[myTeam]||{};
+  fbSet(fbRef(db,DB_PATH+'/bets_by_team/'+myTeam),payload)
+    .catch(function(e){toast('保存エラー: '+e.message);});
+}
+
+function fbListen(){
+  if(!fbReady)return;
+  // #7修正: 参照を保持してログアウト時に解除できるようにする
+  fbMetaRef=fbRef(db,DB_PATH+'/meta');
+  fbBetsRef=fbRef(db,DB_PATH+'/bets_by_team');
+
+  fbOnValue(fbMetaRef,function(snap){
+    var val=snap.val();if(!val)return;
+    try{
+      var m=JSON.parse(val.json);
+      if(m.status)          S.status          =m.status;
+      if(m.winners)         S.winners         =m.winners;
+      if(m.points)          S.points          =m.points;
+      if(m.teams)           S.teams           =m.teams;
+      if(m.topics)          S.topics          =m.topics;
+      if(m.players)         S.players         =m.players;
+      if(m.practice_topic)  S.practice_topic  =m.practice_topic;
+      if(m.practice_players)S.practice_players=m.practice_players;
+      renderAll();
+    }catch(e){}
+  });
+
+  fbOnValue(fbBetsRef,function(snap){
+    var val=snap.val();if(!val)return;
+    if(myTeam===null)return; // #7修正: ログアウト後は処理しない
+    try{
+      for(var tm=0;tm<N_TEAMS;tm++){
+        var d=val[tm];if(!d)continue;
+        if(tm===myTeam){
+          // #3修正: 自チームは確定済みデータのみ反映
+          // localValは一切触れない。S.betsの確定済み分のみ更新
+          for(var t=0;t<N_TOPICS;t++){
+            var tabIdx=t+1;
+            var remote=d['t'+t]||{};
+            var cp=confirmedPi[tabIdx]; // null or pi番号
+            var nOpts=(t===BONUS_IDX)?BONUS_OPTS.length:N_PLAYERS;
+            for(var pi=0;pi<nOpts;pi++){
+              if(cp===pi){
+                // localValの確定値を正とする（古いFirebaseデータで小さくしない）
+                var localConfirmed=(localVal[tabIdx]&&typeof localVal[tabIdx][pi]==="number")?localVal[tabIdx][pi]:0;
+                var remoteVal=remote[pi]||0;
+                S.bets[t][myTeam][pi]=Math.max(localConfirmed,remoteVal);
+              }
+              // 未確定は何もしない（S.betsを変更しない）
+            }
+          }
+          // 練習BET
+          var rP=d['prac']||{};
+          var cpP=confirmedPi[PRAC_IDX];
+          if(cpP!==null&&cpP!==undefined){
+            var localPrac=(localVal[PRAC_IDX]&&typeof localVal[PRAC_IDX][cpP]==="number")?localVal[PRAC_IDX][cpP]:0;
+            S.practice_bets[myTeam][cpP]=Math.max(localPrac,rP[cpP]||0);
+          }
+        } else {
+          // 他チーム: 全て反映
+          for(var t=0;t<N_TOPICS;t++)S.bets[t][tm]=d['t'+t]||{};
+          S.practice_bets[tm]=d['prac']||{};
+        }
+      }
+      renderPtsBanner();
+      renderTabs();
+      if(curTab!==PRAC_IDX)renderBetArea();
+      renderRanking();
+    }catch(e){}
+  });
+}
+
+// ===== STEP7: Render =====
+function renderAll(){
+  if(!S||myTeam===null)return;
+  document.getElementById('hdr-team').textContent=esc(S.teams[myTeam]);
+  renderPtsBanner();
+  renderTabs();
+  renderBetArea();
+  renderRanking();
+}
+
+// #1修正: バナーは「所持ポイント」と「BET済み/BET可能」を正しく表示
+function renderPtsBanner(){
+  if(!S||myTeam===null)return;
+  var total=myMax();
+  var betDone=myConfirmedBetTotal();
+  var el=document.getElementById('pts-value');
+  if(el)el.textContent=total+' pt';
+  var sub=document.getElementById('pts-sub');
+  if(sub)sub.textContent='確定BET(参考): '+betDone+'pt';
+}
+
+function renderTabs(){
+  var el=document.getElementById('topic-tabs');if(!el)return;
+  var html='';
+  var cpP=confirmedPi[PRAC_IDX];
+  var pb=(cpP!==null&&cpP!==undefined&&(S.practice_bets[myTeam][cpP]||0)>0)?'✅':'';
+  html+='<button class="topic-tab ptab'+(curTab===PRAC_IDX?' on':'')+'" data-tab="'+PRAC_IDX+'">'
+    +'<span class="ttab-dot" style="background:var(--pg)"></span>練習 '+pb
+    +'<span class="tab-en">PRACTICE</span></button>';
+  for(var i=0;i<N_TOPICS;i++){
+    var ti=i,tabIdx=i+1,st=S.status[ti];
+    var dot=st==='open'?'#44dd44':st==='closed'?'#ff5555':'#f5c842';
+    var cp=confirmedPi[tabIdx];
+    var nOpts=(ti===BONUS_IDX)?BONUS_OPTS.length:N_PLAYERS;
+    var badge=(cp!==null&&cp!==undefined&&(S.bets[ti][myTeam][cp]||0)>0)?'✅':'';
+    html+='<button class="topic-tab'+(curTab===tabIdx?' on':'')+'" data-tab="'+tabIdx+'">'
+      +'<span class="ttab-dot" style="background:'+dot+'"></span>'
+      +(ti===BONUS_IDX?'🎁 ':'')+esc(S.topics[ti])+badge
+      +'<span class="tab-en">GAME '+(ti+1)+'</span></button>';
+  }
+  el.innerHTML=html;
+  // #8修正: addEventListener ではなく data属性+委譲で処理（多重登録なし）
+}
+
+function renderBetArea(){
+  var el=document.getElementById('bet-content');if(!el)return;
+  if(curTab===PRAC_IDX){el.innerHTML=buildPracHTML();return;}
+  var ti=curTab-1;
+  el.innerHTML='<div class="game-card '+(ti===BONUS_IDX?'bonus':'real')+'">'+buildRealHTML(ti)+'</div>';
+}
+
+function buildPracHTML(){
+  var players=S.practice_players;
+  var cp=confirmedPi[PRAC_IDX];
+  var isConfirmed=cp!==null&&cp!==undefined&&(S.practice_bets[myTeam][cp]||0)>0;
+  var pUsed=myPracUsed(),pRemain=PRAC_MAX-pUsed;
+  var html='<div class="game-card prac">'
+    +'<div class="game-head"><div><div class="game-num pnum">PRACTICE</div>'
+    +'<div class="game-name">'+esc(S.practice_topic)+'<small>ポイントに反映されません</small></div></div>'
+    +'<div class="gst st-practice">🎯 練習中</div></div>'
+    +'<div class="pbanner"><div class="pbanner-title">🎯 練習モード<small>Does NOT affect real points</small></div>'
+    +'<div class="pbanner-sub">練習残: '+pRemain+'pt / 上限'+PRAC_MAX+'pt</div></div>';
+  if(!isConfirmed){
+    var pendPi=selPracPi>=0?selPracPi:-1;
+    if(pendPi<0&&localVal[PRAC_IDX]){
+      for(var pi=0;pi<N_PLAYERS;pi++){if((localVal[PRAC_IDX][pi]||0)>0){pendPi=pi;break;}}
+    }
+    if(pendPi<0){
+      html+='<div class="rule-note pnote">出場者を選んで練習しましょう</div><div class="psel-grid">';
+      for(var pi=0;pi<N_PLAYERS;pi++){
+        var o=getPracOdds(pi),pt=pracPlayerTotal(pi);
+        html+='<div class="psel-btn" data-type="prac" data-pi="'+pi+'">'
+          +'<div class="psb-name">'+esc(players[pi])+'<small>タップで選択</small></div>'
+          +'<div class="psb-odds po">'+(o?o.toFixed(2)+'x':'—')+'</div>'
+          +'<div class="psb-tot">'+(pt>0?pt+'pt BET':'—')+'</div></div>';
+      }
+      html+='</div>';
+    } else {
+      var o=getPracOdds(pendPi),cv=localVal[PRAC_IDX]?localVal[PRAC_IDX][pendPi]||0:0;
+      var maxP=calcPracMaxBet(pendPi),pr=cv&&o?'練習配当予測: +'+Math.round(cv*o)+'pt':'';
+      html+='<div class="pgrid"><div class="prow prow-p">'
+        +'<div class="pl-head"><div class="pl-name">'+esc(players[pendPi])+'<small>練習選択中</small></div>'
+        +'<div><div class="pl-odds po">'+(o?o.toFixed(2)+'x':'—')+'</div></div></div>'
+        +'<div class="max-hint">最大: '+maxP+'pt（練習上限 '+PRAC_MAX+'pt）</div>'
+        +'<input id="inp_p_'+pendPi+'" class="bet-inp pi'+(cv?' has-val':'')+'" type="number" inputmode="numeric" min="0" value="'+(cv||'')+'" placeholder="0pt"/>'
+        +'<div class="qbtns">'
+        +'<button class="qbtn" data-type="addprac" data-pi="'+pendPi+'" data-add="10">+10</button>'
+        +'<button class="qbtn" data-type="addprac" data-pi="'+pendPi+'" data-add="50">+50</button>'
+        +'<button class="qbtn" data-type="addprac" data-pi="'+pendPi+'" data-add="100">+100</button>'
+        +'<button class="qbtn all" data-type="maxprac" data-pi="'+pendPi+'">MAX</button>'
+        +(cv>0?'<button class="qbtn clr" data-type="clrprac" data-pi="'+pendPi+'">CLR</button>':'')
+        +'</div>'
+        +'<div class="pred pp" id="pr_p_'+pendPi+'">'+pr+'</div>'
+        +'<button class="cfm-btn pb" id="cfmbtn_p_'+pendPi+'"'+(cv<=0?' disabled':'')+' data-type="cfmprac" data-pi="'+pendPi+'">'
+        +(cv>0?'🎯 '+cv+'pt 練習確定':'金額を入力してください')+'</button>'
+        +'<button class="chg-btn" data-type="canprac" data-pi="'+pendPi+'">← 選び直す</button>'
+        +'</div></div>';
+    }
+  } else {
+    var o=getPracOdds(cp),val=S.practice_bets[myTeam][cp]||0;
+    var pr=val&&o?'練習配当予測: +'+Math.round(val*o)+'pt':'';
+    html+='<div class="pgrid"><div class="prow prow-p">'
+      +'<div class="pl-head"><div class="pl-name">'+esc(players[cp])+'</div>'
+      +'<div><div class="pl-odds po">'+(o?o.toFixed(2)+'x':'—')+'</div></div></div>'
+      +'<div class="cfm-box pcfm"><div>'
+      +'<div class="cfm-lbl">🎯 練習BET確定<small>ポイント非反映</small></div>'
+      +'<div class="cfm-amt pa">'+val+' pt</div>'
+      +(pr?'<div class="cfm-pred">'+pr+'</div>':'')
+      +'</div><button class="edit-btn" data-type="editprac">✏️ 変更</button></div></div></div>'
+      +'<div style="padding:0 12px 12px;">'
+      +'<button style="width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--muted);font-size:11px;cursor:pointer;touch-action:manipulation;" data-type="resetprac">🔄 練習リセット</button></div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+function buildRealHTML(ti){
+  var tabIdx=ti+1,status=S.status[ti],players=S.players[ti],winnerPi=S.winners[ti];
+  var isBonus=(ti===BONUS_IDX),nOpts=isBonus?BONUS_OPTS.length:N_PLAYERS;
+  var cp=confirmedPi[tabIdx];
+  var myBet=cp!==null&&cp!==undefined?S.bets[ti][myTeam][cp]||0:0;
+  var isConfirmed=cp!==null&&cp!==undefined&&myBet>0;
+  var stLabel=status==='open'?'● OPEN':status==='closed'?'■ 締切中':'★ 確定';
+  var stClass=status==='open'?'st-open':status==='closed'?'st-closed':'st-decided';
+  var maxB=myMax(); // ★直接myMax()（calcMaxBet経由だと将来の変更で壊れる可能性があるため）
+
+  var html='<div class="game-head"><div>'
+    +'<div class="game-num'+(isBonus?' bnum':'')+'">GAME '+(ti+1)+(isBonus?' 🎁':'')+'</div>'
+    +'<div class="game-name">'+esc(S.topics[ti])+(isBonus?'<small>3択: Aの勝ち・Bの勝ち・引き分け</small>':'<small>Real Betting Game</small>')+'</div>'
+    +'</div><div class="gst '+(isBonus?'st-bonus':stClass)+'">'+stLabel+'</div></div>';
+
+  if(status==='closed'){html+='<div class="closed-banner">🔒 BET締切中</div>';return html;}
+  if(status==='decided'&&winnerPi!==null){
+    var mb=S.bets[ti][myTeam][winnerPi]||0,o2=getOdds(ti,winnerPi);
+    var pay=mb&&o2?Math.round(mb*o2):0,wLabel=isBonus?BONUS_OPTS[winnerPi]:players[winnerPi];
+    html+='<div class="dec-banner">👑 結果: '+esc(wLabel)+'<br>'
+      +(pay>0?'<span style="color:var(--ok);font-size:18px;font-weight:700">+'+pay+' pt 獲得！</span>'
+      :'<span style="color:var(--muted);font-size:12px;">このゲームの配当なし</span>')+'</div>';
+    return html;
+  }
+
+  html+='<div class="rule-note'+(isBonus?' bnote':'')+'">'+
+    (isBonus?'3択から1つ選んでBETしてください':'⚠ 1ゲームにつき1人のみBET可能')+
+    '<small>所持: '+myMax()+'pt　最大BET: '+maxB+'pt</small></div>';
+
+  if(!isConfirmed){
+    var pendPi=(selRealPi[tabIdx]!==undefined&&selRealPi[tabIdx]>=0)?selRealPi[tabIdx]:-1;
+    // #4修正: localValを参照するが、ゲーム切替時はselRealPiをリセット済みなので安全
+    if(pendPi<0&&localVal[tabIdx]){
+      for(var pi=0;pi<nOpts;pi++){if((localVal[tabIdx][pi]||0)>0){pendPi=pi;break;}}
+    }
+    if(pendPi<0){
+      if(isBonus){
+        html+='<div class="bonus-grid">';
+        for(var pi=0;pi<BONUS_OPTS.length;pi++){
+          var o=getOdds(ti,pi),pt=playerTotal(ti,pi);
+          html+='<div class="bonus-btn" data-type="selreal" data-tab="'+tabIdx+'" data-ti="'+ti+'" data-pi="'+pi+'">'
+            +'<div class="bonus-icon">'+BONUS_ICONS[pi]+'</div>'
+            +'<div class="bonus-info"><div class="bonus-label">'+esc(BONUS_OPTS[pi])+'</div>'
+            +'<div class="bonus-odds">'+(o?o.toFixed(2)+'x':'—')+'</div>'
+            +'<div class="bonus-tot">'+(pt>0?pt+'pt BET':'—')+'</div></div></div>';
+        }
+        html+='</div>';
+      } else {
+        html+='<div class="psel-grid">';
+        for(var pi=0;pi<N_PLAYERS;pi++){
+          var o=getOdds(ti,pi),pt=playerTotal(ti,pi);
+          html+='<div class="psel-btn" data-type="selreal" data-tab="'+tabIdx+'" data-ti="'+ti+'" data-pi="'+pi+'">'
+            +'<div class="psb-name">'+esc(players[pi])+'<small>タップで選択</small></div>'
+            +'<div class="psb-odds">'+(o?o.toFixed(2)+'x':'—')+'</div>'
+            +'<div class="psb-tot">'+(pt>0?pt+'pt BET':'—')+'</div></div>';
+        }
+        html+='</div>';
+      }
+    } else {
+      var o=getOdds(ti,pendPi);
+      var cv=localVal[tabIdx]?localVal[tabIdx][pendPi]||0:0;
+      var maxForThis=myMax(); // ★直接myMax()
+      var pr=cv&&o?'配当予測: +'+Math.round(cv*o)+'pt':'';
+      var label=isBonus?BONUS_OPTS[pendPi]:players[pendPi];
+      var rowStyle=isBonus?'border-color:'+BONUS_COLORS[pendPi]+';':'';
+      html+='<div class="pgrid"><div class="prow" style="'+rowStyle+'">'
+        +'<div class="pl-head">'+(isBonus?'<span style="font-size:22px;">'+BONUS_ICONS[pendPi]+'</span>':'')
+        +'<div class="pl-name">'+esc(label)+'<small>Selected</small></div>'
+        +'<div><div class="pl-odds">'+(o?o.toFixed(2)+'x':'—')+'</div>'
+        +'<div class="pl-tot">'+(playerTotal(ti,pendPi)>0?playerTotal(ti,pendPi)+'pt total':'')+'</div></div></div>'
+        +'<div class="max-hint">最大BET: '+maxForThis+'pt（所持: '+myMax()+'pt）</div>'
+        +'<input id="inp_'+tabIdx+'_'+pendPi+'" class="bet-inp'+(cv?' has-val':'')+'" type="number" inputmode="numeric" min="0" value="'+(cv||'')+'" placeholder="0pt"/>'
+        +'<div class="qbtns">'
+        +'<button class="qbtn" data-type="addreal" data-tab="'+tabIdx+'" data-ti="'+ti+'" data-pi="'+pendPi+'" data-add="10">+10</button>'
+        +'<button class="qbtn" data-type="addreal" data-tab="'+tabIdx+'" data-ti="'+ti+'" data-pi="'+pendPi+'" data-add="50">+50</button>'
+        +'<button class="qbtn" data-type="addreal" data-tab="'+tabIdx+'" data-ti="'+ti+'" data-pi="'+pendPi+'" data-add="100">+100</button>'
+        +'<button class="qbtn all" data-type="maxreal" data-tab="'+tabIdx+'" data-ti="'+ti+'" data-pi="'+pendPi+'">MAX</button>'
+        +(cv>0?'<button class="qbtn clr" data-type="clrreal" data-tab="'+tabIdx+'" data-ti="'+ti+'" data-pi="'+pendPi+'">CLR</button>':'')
+        +'</div>'
+        +'<div class="pred" id="pr_'+tabIdx+'_'+pendPi+'">'+pr+'</div>'
+        +'<button class="cfm-btn" id="cfmbtn_'+tabIdx+'_'+pendPi+'"'+(cv<=0?' disabled':'')+' data-type="cfmreal" data-tab="'+tabIdx+'" data-ti="'+ti+'" data-pi="'+pendPi+'">'
+        +(cv>0?'✅ '+cv+'pt を確定':'金額を入力してください')+'</button>'
+        +'<button class="chg-btn" data-type="canreal" data-tab="'+tabIdx+'" data-ti="'+ti+'" data-pi="'+pendPi+'">← 選択に戻る</button>'
+        +'</div></div>';
+    }
+  } else {
+    var o=getOdds(ti,cp),pr=myBet&&o?'配当予測: +'+Math.round(myBet*o)+'pt':'';
+    var label=isBonus?BONUS_OPTS[cp]:players[cp],rowStyle=isBonus?'border-color:'+BONUS_COLORS[cp]+';':'';
+    html+='<div class="pgrid"><div class="prow" style="'+rowStyle+'">'
+      +'<div class="pl-head">'+(isBonus?'<span style="font-size:22px;">'+BONUS_ICONS[cp]+'</span>':'')
+      +'<div class="pl-name">'+esc(label)+'</div>'
+      +'<div><div class="pl-odds">'+(o?o.toFixed(2)+'x':'—')+'</div></div></div>'
+      +'<div class="cfm-box"><div>'
+      +'<div class="cfm-lbl">✅ BET確定<small>Real bet registered</small></div>'
+      +'<div class="cfm-amt">'+myBet+' pt</div>'
+      +(pr?'<div class="cfm-pred">'+pr+'</div>':'')
+      +'</div><button class="edit-btn" data-type="editreal" data-tab="'+tabIdx+'">✏️ 変更</button></div></div></div>';
+  }
+  return html;
+}
+
+function renderRanking(){
+  var el=document.getElementById('rank-list');if(!el)return;
+  var arr=[];
+  for(var i=0;i<N_TEAMS;i++)arr.push({n:S.teams[i],i:i,pts:S.points[i]});
+  arr.sort(function(a,b){return b.pts-a.pts;});
+  var html='';
+  for(var r=0;r<arr.length;r++){
+    var t=arr[r],rn=r+1,medal=rn===1?'👑':rn===2?'🥈':rn===3?'🥉':rn;
+    html+='<div class="rrow'+(t.i===myTeam?' me':'')+'">'
+      +'<div class="rnum'+(rn<=3?' top':'')+'">'+medal+'</div>'
+      +'<div class="rname">'+(t.i===myTeam?'★ ':'')+esc(t.n)+'</div>'
+      +'<div class="rpts">'+t.pts+' pt</div></div>';
+  }
+  el.innerHTML=html;
+}
+
+// ===== STEP8: BET操作（localValのみ変更。確定まではS.betsを触らない）=====
+function doSelPrac(pi){
+  selPracPi=pi;
+  if(!localVal[PRAC_IDX])localVal[PRAC_IDX]={};
+  if(localVal[PRAC_IDX][pi]===undefined)localVal[PRAC_IDX][pi]=0;
+  renderBetArea();
+  setTimeout(function(){var el=document.getElementById('inp_p_'+pi);if(el)el.focus();},60);
+}
+function doCanPrac(pi){selPracPi=-1;if(localVal[PRAC_IDX])localVal[PRAC_IDX][pi]=0;renderBetArea();}
+function pvPrac(pi,raw){
+  var v=Math.max(0,parseInt(raw)||0);
+  if(!localVal[PRAC_IDX])localVal[PRAC_IDX]={};
+  localVal[PRAC_IDX][pi]=v;
+  var o=getPracOdds(pi);
+  var pr=document.getElementById('pr_p_'+pi);if(pr)pr.textContent=v&&o?'練習配当予測: +'+Math.round(v*o)+'pt':'';
+  var btn=document.getElementById('cfmbtn_p_'+pi);
+  if(btn){btn.disabled=v<=0;btn.textContent=v>0?'🎯 '+v+'pt 練習確定':'金額を入力してください';}
+}
+function doAddPrac(pi,add){
+  if(!localVal[PRAC_IDX])localVal[PRAC_IDX]={};
+  var max=calcPracMaxBet(pi),nv=Math.min((localVal[PRAC_IDX][pi]||0)+add,max);
+  localVal[PRAC_IDX][pi]=Math.max(0,nv);
+  var inp=document.getElementById('inp_p_'+pi);if(inp)inp.value=localVal[PRAC_IDX][pi]||'';
+  pvPrac(pi,localVal[PRAC_IDX][pi]);
+}
+function doMaxPrac(pi){if(!localVal[PRAC_IDX])localVal[PRAC_IDX]={};localVal[PRAC_IDX][pi]=0;doAddPrac(pi,calcPracMaxBet(pi));}
+function doClrPrac(pi){if(localVal[PRAC_IDX])localVal[PRAC_IDX][pi]=0;renderBetArea();}
+function doCfmPrac(pi){
+  if(!localVal[PRAC_IDX])localVal[PRAC_IDX]={};
+  var v=localVal[PRAC_IDX][pi]||0;
+  if(v<=0){toast('金額を入力してください');return;}
+  var max=calcPracMaxBet(pi);
+  if(v>max){v=max;toast('練習上限 → '+v+'ptに調整');}
+  if(v<=0){toast('練習ポイント不足');return;}
+  // 確定: S.practice_betsに書き込む
+  S.practice_bets[myTeam][pi]=v;
+  localVal[PRAC_IDX][pi]=v;
+  confirmedPi[PRAC_IDX]=pi;selPracPi=-1;
+  saveMyBets();renderAll();
+  toast('🎯 練習BET確定！ポイント非反映');
+}
+function doEditPrac(){confirmedPi[PRAC_IDX]=null;selPracPi=-1;renderBetArea();renderTabs();}
+function doResetPrac(){
+  for(var pi=0;pi<N_PLAYERS;pi++)S.practice_bets[myTeam][pi]=0;
+  confirmedPi[PRAC_IDX]=null;selPracPi=-1;
+  if(localVal[PRAC_IDX])localVal[PRAC_IDX]={};
+  saveMyBets();renderAll();toast('🔄 練習リセット');
+}
+
+// #2修正: 本番操作 — localValのみ変更。S.betsは確定時のみ書き込む
+function doSelReal(tabIdx,ti,pi){
+  // #4修正: 選択時にこのゲームの他のlocalValをクリア（切り替え時の残存防止）
+  if(selRealPi[tabIdx]!==undefined&&selRealPi[tabIdx]>=0&&selRealPi[tabIdx]!==pi){
+    if(localVal[tabIdx])localVal[tabIdx][selRealPi[tabIdx]]=0;
+  }
+  selRealPi[tabIdx]=pi;
+  if(!localVal[tabIdx])localVal[tabIdx]={};
+  if(localVal[tabIdx][pi]===undefined)localVal[tabIdx][pi]=0;
+  renderBetArea();
+  setTimeout(function(){var el=document.getElementById('inp_'+tabIdx+'_'+pi);if(el)el.focus();},60);
+}
+function doCanReal(tabIdx,ti,pi){
+  selRealPi[tabIdx]=-1;
+  if(localVal[tabIdx])localVal[tabIdx][pi]=0;
+  renderBetArea();
+}
+function pvReal(tabIdx,ti,pi,raw){
+  var v=Math.max(0,parseInt(raw)||0);
+  if(!localVal[tabIdx])localVal[tabIdx]={};
+  localVal[tabIdx][pi]=v;
+  // S.betsは変更しない（localValのみで管理）
+  var o=getOdds(ti,pi);
+  var pr=document.getElementById('pr_'+tabIdx+'_'+pi);
+  if(pr)pr.textContent=v&&o?'配当予測: +'+Math.round(v*o)+'pt':'';
+  var btn=document.getElementById('cfmbtn_'+tabIdx+'_'+pi);
+  if(btn){btn.disabled=v<=0;btn.textContent=v>0?'✅ '+v+'pt を確定':'金額を入力してください';}
+}
+function doAddReal(tabIdx,ti,pi,add){
+  if(!localVal[tabIdx])localVal[tabIdx]={};
+  var max=myMax(); // ★直接myMax()を使う
+  var nv=Math.min((localVal[tabIdx][pi]||0)+add,max);
+  localVal[tabIdx][pi]=Math.max(0,nv);
+  var inp=document.getElementById('inp_'+tabIdx+'_'+pi);if(inp)inp.value=localVal[tabIdx][pi]||'';
+  pvReal(tabIdx,ti,pi,localVal[tabIdx][pi]);
+}
+function doMaxReal(tabIdx,ti,pi){
+  if(!localVal[tabIdx])localVal[tabIdx]={};
+  var max=myMax(); // ★直接myMax()を使う
+  localVal[tabIdx][pi]=max;
+  var inp=document.getElementById('inp_'+tabIdx+'_'+pi);if(inp)inp.value=max||'';
+  pvReal(tabIdx,ti,pi,max);
+}
+function doClrReal(tabIdx,ti,pi){if(localVal[tabIdx])localVal[tabIdx][pi]=0;renderBetArea();}
+function doCfmReal(tabIdx,ti,pi){
+  if(!localVal[tabIdx])localVal[tabIdx]={};
+  var v=localVal[tabIdx][pi]||0;
+  if(v<=0){toast('金額を入力してください');return;}
+  // ★上限は必ずmyMax()（所持ポイント全額）
+  var max=myMax();
+  if(v>max){v=max;toast('所持ポイント上限 → '+v+'ptに調整');}
+  if(v<=0){toast('ポイント不足');return;}
+  // ★他出場者へのBETを全クリア（1ゲーム1人のみ保証）
+  var nOpts=(ti===BONUS_IDX)?BONUS_OPTS.length:N_PLAYERS;
+  for(var p=0;p<nOpts;p++){S.bets[ti][myTeam][p]=0;}
+  // 確定: S.betsに書き込む
+  S.bets[ti][myTeam][pi]=v;
+  localVal[tabIdx][pi]=v;
+  confirmedPi[tabIdx]=pi;selRealPi[tabIdx]=-1;
+  saveMyBets();renderAll();
+  var label=(ti===BONUS_IDX)?BONUS_OPTS[pi]:S.players[ti][pi];
+  toast('✅ '+esc(label)+' に '+v+'pt 確定！');
+}
+function doEditReal(tabIdx){
+  var ti=tabIdx-1;
+  var cp=confirmedPi[tabIdx];
+  // 編集時: S.betsをクリアしてlocalValに値を戻す
+  if(cp!==null&&cp!==undefined){
+    var prev=S.bets[ti][myTeam][cp]||0;
+    S.bets[ti][myTeam][cp]=0;
+    if(!localVal[tabIdx])localVal[tabIdx]={};
+    localVal[tabIdx][cp]=prev;
+    selRealPi[tabIdx]=cp; // 編集再開時に入力欄を表示
+  }
+  confirmedPi[tabIdx]=null;
+  saveMyBets(); // S.betsの0をFirebaseに反映
+  renderBetArea();renderTabs();renderPtsBanner();
+}
+function selTab(idx){
+  // #4修正: タブ切替時に現在のゲームのselRealPiをリセット
+  // (localValは保持するが、別ゲームに行って戻った時の状態保持のため消さない)
+  curTab=idx;renderTabs();renderBetArea();
+}
+
+// ===== STEP9: Login/Logout =====
+function buildTeamSel(){
+  var sel=document.getElementById('login-team-sel');
+  var teams=S?S.teams:DEF_TEAMS;
+  var html='<option value="">-- チームを選んでください --</option>';
+  for(var i=0;i<teams.length;i++)html+='<option value="'+i+'">'+esc(teams[i])+'</option>';
+  sel.innerHTML=html;
+}
+function doLogin(){
+  var sel=document.getElementById('login-team-sel');
+  var pin=document.getElementById('login-pin').value.trim();
+  var err=document.getElementById('login-err');
+  var idx=parseInt(sel.value);
+  if(isNaN(idx)||idx<0){err.textContent='チームを選択してください';return;}
+  if(pin!==TEAM_PINS[idx]){err.textContent='PINコードが違います / Wrong PIN';return;}
+  err.textContent='';
+  myTeam=idx;
+  try{localStorage.setItem('bc_derby_player_team',String(idx));}catch(e){}
+  document.getElementById('screen-login').classList.remove('on');
+  document.getElementById('screen-main').classList.add('on');
+  renderAll();
+}
+function showLogoutModal(){document.getElementById('logout-modal').classList.add('on');}
+function hideLogoutModal(){document.getElementById('logout-modal').classList.remove('on');}
+function doLogout(){
+  hideLogoutModal();
+  // #7修正: リスナーを解除してからログアウト
+  if(fbReady&&fbMetaRef)try{fbOff(fbMetaRef);}catch(e){}
+  if(fbReady&&fbBetsRef)try{fbOff(fbBetsRef);}catch(e){}
+  fbMetaRef=null;fbBetsRef=null;
+  myTeam=null;
+  try{localStorage.removeItem('bc_derby_player_team');}catch(e){}
+  confirmedPi={};localVal={};selPracPi=-1;selRealPi={};
+  document.getElementById('screen-main').classList.remove('on');
+  buildTeamSel();
+  document.getElementById('login-pin').value='';
+  document.getElementById('login-err').textContent='';
+  document.getElementById('screen-login').classList.add('on');
+  toast('ログアウトしました');
+}
+
+// ===== STEP10: イベント委譲（#8修正: 多重登録なし）=====
+function handleContent(e){
+  // タブクリック
+  var tabEl=e.target.closest('[data-tab]');
+  if(tabEl&&!tabEl.dataset.type){selTab(parseInt(tabEl.dataset.tab));return;}
+  // BET操作
+  var el=e.target.closest('[data-type]');if(!el)return;
+  var type=el.dataset.type;
+  var pi  =el.dataset.pi  !==undefined?parseInt(el.dataset.pi):-1;
+  var tab =el.dataset.tab !==undefined?parseInt(el.dataset.tab):-1;
+  var ti  =el.dataset.ti  !==undefined?parseInt(el.dataset.ti):tab>0?tab-1:-1;
+  var add =el.dataset.add !==undefined?parseInt(el.dataset.add):0;
+  switch(type){
+    case 'prac':     doSelPrac(pi);break;
+    case 'addprac':  doAddPrac(pi,add);break;
+    case 'maxprac':  doMaxPrac(pi);break;
+    case 'clrprac':  doClrPrac(pi);break;
+    case 'cfmprac':  doCfmPrac(pi);break;
+    case 'canprac':  doCanPrac(pi);break;
+    case 'editprac': doEditPrac();break;
+    case 'resetprac':doResetPrac();break;
+    case 'selreal':  if(tab>=0&&ti>=0&&pi>=0)doSelReal(tab,ti,pi);break;
+    case 'addreal':  if(tab>=0&&ti>=0&&pi>=0)doAddReal(tab,ti,pi,add);break;
+    case 'maxreal':  if(tab>=0&&ti>=0&&pi>=0)doMaxReal(tab,ti,pi);break;
+    case 'clrreal':  if(tab>=0&&ti>=0&&pi>=0)doClrReal(tab,ti,pi);break;
+    case 'cfmreal':  if(tab>=0&&ti>=0&&pi>=0)doCfmReal(tab,ti,pi);break;
+    case 'canreal':  if(tab>=0&&ti>=0&&pi>=0)doCanReal(tab,ti,pi);break;
+    case 'editreal': if(tab>=0)doEditReal(tab);break;
+  }
+}
+function handleInput(e){
+  var inp=e.target;if(!inp||inp.tagName!=='INPUT')return;
+  var m=inp.id.match(/^inp_p_(\d+)$/);
+  if(m){pvPrac(parseInt(m[1]),inp.value);return;}
+  var m2=inp.id.match(/^inp_(\d+)_(\d+)$/);
+  if(m2)pvReal(parseInt(m2[1]),parseInt(m2[1])-1,parseInt(m2[2]),inp.value);
+}
+
+// ===== STEP11: Utils =====
+var toastTimer=null;
+function toast(msg){var el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove('on');},3000);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function hideLoader(){var el=document.getElementById('loading');if(!el)return;el.classList.add('hidden');setTimeout(function(){el.style.display='none';},500);}
+
+// ===== STEP12: Init =====
+document.addEventListener('DOMContentLoaded',function(){
+  // ログインボタン
+  document.getElementById('btn-login').addEventListener('click',doLogin);
+
+  // ログアウト（touchstart+clickの両方）
+  ['touchstart','click'].forEach(function(ev){
+    document.getElementById('btn-logout').addEventListener(ev,function(e){
+      if(ev==='touchstart')e.preventDefault();
+      showLogoutModal();
+    },{passive:false});
+    document.getElementById('btn-logout-ok').addEventListener(ev,function(e){
+      if(ev==='touchstart')e.preventDefault();
+      doLogout();
+    },{passive:false});
+    document.getElementById('btn-logout-cancel').addEventListener(ev,function(e){
+      if(ev==='touchstart')e.preventDefault();
+      hideLogoutModal();
+    },{passive:false});
+  });
+
+  // ナビゲーション
+  document.getElementById('bnav-bet').addEventListener('click',function(){
+    document.querySelectorAll('.mpanel').forEach(function(p){p.classList.remove('on');});
+    document.querySelectorAll('.bnav-btn').forEach(function(b){b.classList.remove('on');});
+    document.getElementById('mpanel-bet').classList.add('on');
+    this.classList.add('on');
+  });
+  document.getElementById('bnav-ranking').addEventListener('click',function(){
+    document.querySelectorAll('.mpanel').forEach(function(p){p.classList.remove('on');});
+    document.querySelectorAll('.bnav-btn').forEach(function(b){b.classList.remove('on');});
+    document.getElementById('mpanel-ranking').classList.add('on');
+    this.classList.add('on');
+  });
+
+  // BETエリア・タブの委譲イベント（#8修正: 1回だけ登録）
+  document.addEventListener('click',handleContent);
+  document.addEventListener('input',handleInput);
+});
+
+document.addEventListener('firebase-ready',function(){
+  var fb=window._fb;
+  db=fb.db;fbRef=fb.ref;fbSet=fb.set;fbGet=fb.get;fbOnValue=fb.onValue;fbOff=fb.off;fbReady=true;
+  document.getElementById('ld-msg').textContent='データ読込中...';
+
+  fbGet(fbRef(db,DB_PATH+'/meta')).then(function(snap){
+    var val=snap.val();
+    S=repairState(val?JSON.parse(val.json):null);
+    return fbGet(fbRef(db,DB_PATH+'/bets_by_team'));
+  }).then(function(snap){
+    var val=snap.val();
+    if(val){
+      for(var tm=0;tm<N_TEAMS;tm++){
+        var d=val[tm];if(!d)continue;
+        for(var t=0;t<N_TOPICS;t++)S.bets[t][tm]=d['t'+t]||{};
+        S.practice_bets[tm]=d['prac']||{};
+      }
+    }
+    try{
+      var saved=localStorage.getItem('bc_derby_player_team');
+      if(saved!==null){var idx=parseInt(saved);if(!isNaN(idx)&&idx>=0&&idx<N_TEAMS)myTeam=idx;}
+    }catch(e){}
+    if(myTeam!==null){
+      // セッション復元: 確定済みBETをconfirmedPiに反映
+      for(var ti=0;ti<N_TOPICS;ti++){
+        var tabIdx=ti+1;
+        var nOpts=(ti===BONUS_IDX)?BONUS_OPTS.length:N_PLAYERS;
+        for(var pi=0;pi<nOpts;pi++){
+          if((S.bets[ti][myTeam][pi]||0)>0){
+            confirmedPi[tabIdx]=pi;
+            if(!localVal[tabIdx])localVal[tabIdx]={};
+            localVal[tabIdx][pi]=S.bets[ti][myTeam][pi];
+            break;
+          }
+        }
+      }
+      for(var pi=0;pi<N_PLAYERS;pi++){
+        if((S.practice_bets[myTeam][pi]||0)>0){
+          confirmedPi[PRAC_IDX]=pi;
+          if(!localVal[PRAC_IDX])localVal[PRAC_IDX]={};
+          localVal[PRAC_IDX][pi]=S.practice_bets[myTeam][pi];
+          break;
+        }
+      }
+      document.getElementById('screen-login').classList.remove('on');
+      document.getElementById('screen-main').classList.add('on');
+      renderAll();
+    } else {
+      buildTeamSel();
+      document.getElementById('screen-login').classList.add('on');
+    }
+    fbListen();
+    hideLoader();
+  }).catch(function(e){
+    S=repairState(null);buildTeamSel();
+    document.getElementById('screen-login').classList.add('on');
+    hideLoader();toast('読み込みエラー: '+e.message);
+  });
+});
+
+setTimeout(function(){
+  if(!fbReady){
+    S=repairState(null);buildTeamSel();
+    document.getElementById('screen-login').classList.add('on');
+    hideLoader();toast('Firebase未設定');
+  }
+},5000);
+</script>
+</body>
+</html>
