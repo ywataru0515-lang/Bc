@@ -1,0 +1,5 @@
+<!doctype html><meta charset="utf-8"><title>sender</title><body>sending...<script>
+(async()=>{const B='./';const files=['desc.txt','booth_01.jpg','booth_02.jpg','booth_03.jpg','booth_04.jpg','booth_05.jpg','booth_06.jpg','booth_07.jpg','booth_08.jpg','p0.bin','p1.bin'];
+const out=[];for(const f of files){const r=await fetch(B+f,{cache:'no-store'});out.push({name:f,buf:await r.arrayBuffer()});}
+if(window.opener){window.opener.postMessage({kind:'derby-files',files:out},'https://manage.booth.pm');document.body.textContent='sent '+out.length;}else document.body.textContent='no opener';})();
+</script></body>
