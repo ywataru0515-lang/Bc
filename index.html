@@ -309,6 +309,31 @@ footer nav{margin:12px 0;display:flex;gap:18px;justify-content:center;flex-wrap:
 .reveal.in{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none}.board .t i{animation:none}}
 </style>
+<!-- Analytics: GA4 + Microsoft Clarity -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-YYTTEVTH00"></script>
+<script>
+window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+gtag('js',new Date());gtag('config','G-YYTTEVTH00');
+(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","zhmlaml9mt");
+(function(){
+  var PAGE=location.pathname.indexOf('demo')>-1?'demo':'lp';
+  function where(el){var s=el.closest('section[id],.hero,#sticky,.sticky,header,nav,footer,#demo-guide');return s?(s.id||String(s.className).split(' ')[0]||s.tagName).toString().slice(0,30):'other';}
+  function ev(name,p){try{gtag('event',name,p);}catch(e){}try{window.clarity&&clarity('event',name);}catch(e){}}
+  document.addEventListener('click',function(e){
+    var a=e.target.closest('a');if(!a)return;var h=a.href||'';var label=(a.innerText||'').trim().slice(0,40);
+    if(h.indexOf('booth.pm')>-1){ev('booth_click',{page:PAGE,position:where(a),link_text:label});}
+    else if(h.indexOf('demo.html')>-1){ev('demo_click',{page:PAGE,position:where(a),link_text:label});}
+    else if(h.indexOf('mailto:')===0){ev('mail_click',{page:PAGE,position:where(a)});}
+  },true);
+  document.addEventListener('submit',function(e){if(e.target&&e.target.id==='cform'){var t=document.getElementById('f-type');ev('contact_submit',{page:PAGE,inquiry_type:t?t.value:''});}},true);
+  document.addEventListener('toggle',function(e){var d=e.target;if(d.tagName==='DETAILS'&&d.open){var s=d.querySelector('summary');ev('faq_open',{question:s?s.innerText.slice(0,60):''});}},true);
+  function tagBooth(){document.querySelectorAll('a[href*="booth.pm/items"]').forEach(function(a){if(a.href.indexOf('utm_source')<0){a.href+=(a.href.indexOf('?')<0?'?':'&')+'utm_source=derby_'+PAGE+'&utm_medium=referral&utm_campaign=lp';}});}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',tagBooth);else tagBooth();
+  if('IntersectionObserver' in window){var seen={};var io=new IntersectionObserver(function(es){es.forEach(function(x){if(x.isIntersecting&&!seen[x.target.id]){seen[x.target.id]=1;ev('section_view',{page:PAGE,section:x.target.id});}});},{threshold:0.4});
+    var go=function(){document.querySelectorAll('section[id]').forEach(function(s){io.observe(s);});};
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();}
+})();
+</script>
 </head>
 <body>
 
