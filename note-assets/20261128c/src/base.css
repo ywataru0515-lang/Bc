@@ -1,0 +1,7 @@
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1280px;background:#fbf7ee;color:#1d1a16;font-family:"Noto Sans CJK JP",sans-serif;padding:56px 64px 72px;position:relative}
+h1{font-size:44px;font-weight:900;margin-bottom:8px}
+.sub{font-size:22px;color:#6b6152;margin-bottom:32px}
+.gold{color:#b8912f}.red{color:#c8102e}
+.mark{position:absolute;right:28px;bottom:20px;font-size:18px;letter-spacing:.2em;color:#b8912f;font-weight:700}
+.bar{width:80px;height:6px;background:#b8912f;margin-bottom:18px}
